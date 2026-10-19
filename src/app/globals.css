@@ -1,8 +1,13 @@
+
 @import "tailwindcss";
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --background: #faf8f3;
+  --foreground: #29251f;
+  --muted: #eee8de;
+  --accent: #a98558;
+  --champagne: #e4c69d;
+  --walnut: #453326;
 }
 
 @theme inline {
@@ -12,15 +17,211 @@
   --font-mono: var(--font-geist-mono);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html {
+  width: 100%;
+  min-height: 100%;
+  margin: 0;
+  scroll-behavior: smooth;
+  scroll-padding-top: 90px;
 }
 
 body {
+  width: 100%;
+  min-height: 100vh;
+  margin: 0;
   background: var(--background);
   color: var(--foreground);
   font-family: Arial, Helvetica, sans-serif;
+}
+
+body,
+#__next {
+  max-width: 100%;
+}
+
+::selection {
+  background: var(--champagne);
+  color: var(--walnut);
+}
+
+button,
+a {
+  -webkit-tap-highlight-color: transparent;
+}
+
+a:focus-visible,
+button:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 4px;
+}
+
+@keyframes reveal-up {
+  from {
+    opacity: 0;
+    transform: translate3d(0, 24px, 0);
+  }
+
+  to {
+    opacity: 1;
+    transform: translate3d(0, 0, 0);
+  }
+}
+
+@keyframes float-furniture {
+  0%,
+  100% {
+    transform: translateY(0) rotate(-0.5deg);
+  }
+
+  50% {
+    transform: translateY(-10px) rotate(0.5deg);
+  }
+}
+
+@keyframes ambient-glow {
+  0%,
+  100% {
+    transform: scale(1);
+    opacity: 0.35;
+  }
+
+  50% {
+    transform: scale(1.12);
+    opacity: 0.65;
+  }
+}
+
+@keyframes hero-progress {
+  from {
+    width: 0;
+  }
+
+  to {
+    width: 100%;
+  }
+}
+
+.animate-reveal {
+  animation: reveal-up 750ms cubic-bezier(0.2, 0.7, 0.2, 1) both;
+}
+
+.animate-reveal-delay-1 {
+  animation: reveal-up 750ms 120ms cubic-bezier(0.2, 0.7, 0.2, 1) both;
+}
+
+.animate-reveal-delay-2 {
+  animation: reveal-up 750ms 240ms cubic-bezier(0.2, 0.7, 0.2, 1) both;
+}
+
+.animate-furniture-float {
+  animation: float-furniture 6s ease-in-out infinite;
+}
+
+.hero-glow {
+  animation: ambient-glow 7s ease-in-out infinite;
+}
+
+.hero-progress {
+  animation: hero-progress 6s linear forwards;
+}
+
+.furniture-card {
+  transform: perspective(1200px) rotateX(0deg) rotateY(0deg) translateY(0);
+  transform-style: preserve-3d;
+  transition:
+    transform 450ms cubic-bezier(0.2, 0.7, 0.2, 1),
+    box-shadow 450ms ease,
+    border-color 350ms ease;
+  will-change: transform;
+}
+
+.furniture-card:hover {
+  transform: perspective(1200px) rotateX(1.5deg) rotateY(-1.5deg)
+    translateY(-7px);
+  box-shadow: 0 25px 55px rgb(69 51 38 / 12%);
+  border-color: #cbb28e;
+}
+
+.furniture-card img {
+  transition: transform 700ms cubic-bezier(0.2, 0.7, 0.2, 1);
+}
+
+.furniture-card:hover img {
+  transform: scale(1.065);
+}
+
+.premium-button {
+  position: relative;
+  overflow: hidden;
+  transition:
+    transform 250ms ease,
+    box-shadow 250ms ease,
+    background-color 250ms ease;
+}
+
+.premium-button:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 10px 25px rgb(41 37 31 / 15%);
+}
+
+.hero-panel {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  background:
+    radial-gradient(ellipse at 75% 20%, rgb(228 198 157 / 65%), transparent 42%),
+    linear-gradient(135deg, #eee4d5 0%, #d9c5a9 48%, #a98c6b 100%);
+}
+
+.hero-panel::before {
+  position: absolute;
+  z-index: -1;
+  inset: 0;
+  background-image: radial-gradient(
+    rgb(255 255 255 / 35%) 1px,
+    transparent 1px
+  );
+  background-size: 22px 22px;
+  content: "";
+  opacity: 0.3;
+}
+
+.hero-orb {
+  position: absolute;
+  width: 16rem;
+  height: 16rem;
+  border-radius: 9999px;
+  background: rgb(255 250 240 / 35%);
+  filter: blur(55px);
+  pointer-events: none;
+}
+
+@media (hover: none) {
+  .furniture-card:hover {
+    transform: none;
+    box-shadow: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    scroll-behavior: auto !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+
+  .furniture-card,
+  .furniture-card:hover,
+  .premium-button:hover {
+    transform: none;
+  }
 }
