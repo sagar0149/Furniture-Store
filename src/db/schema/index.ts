@@ -37,3 +37,4 @@ export * from "./admin-audit-logs";
 export * from "./sessions";
 export * from "./password-reset-tokens";
 export * from "./payment-provider-settings";
+export * from "./exchange-rates";

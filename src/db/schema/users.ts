@@ -1,3 +1,4 @@
+
 import {
   boolean,
   index,
@@ -26,6 +27,11 @@ export const users = pgTable(
     passwordHash: varchar("password_hash", { length: 255 }).notNull(),
 
     phone: varchar("phone", { length: 30 }),
+
+    // Customer's preferred country for currency display.
+    preferredCountry: varchar("preferred_country", {
+      length: 100,
+    }),
 
     role: userRoleEnum("role").notNull().default("CUSTOMER"),
 
