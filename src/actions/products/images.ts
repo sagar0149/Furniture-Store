@@ -326,16 +326,29 @@ export async function deleteProductImageAction(
       };
     }
 
-    const deleted =
-      await deleteProductImage(imageId);
+    const wasPrimary = image.isPrimary;
 
-    if (!deleted) {
-      return {
-        success: false,
-        message:
-          "Unable to delete product image.",
-      };
-    }
+const deleted = await deleteProductImage(imageId);
+
+if (!deleted) {
+  return {
+    success: false,
+    message: "Unable to delete product image.",
+  };
+}
+
+if (wasPrimary) {
+  const remainingImages = await getProductImages(productId);
+
+  if (remainingImages.length > 0) {
+    await clearPrimaryProductImages(productId);
+
+    await setPrimaryProductImage(
+      productId,
+      remainingImages[0].id,
+    );
+  }
+}
 
     try {
       await cloudinary.uploader.destroy(

@@ -244,12 +244,67 @@ export function ProductImageManager({
       <div className="rounded-lg border border-dashed p-5">
         <div className="space-y-4">
           <div>
-            <label
-              htmlFor="product-image-file"
-              className="text-sm font-medium"
-            >
-              Select image
-            </label>
+            <div className="space-y-3">
+  <label className="text-sm font-semibold">
+    Product image
+  </label>
+
+  <label
+    htmlFor="product-image-file"
+    className="flex min-h-36 cursor-pointer flex-col items-center justify-center rounded-xl border-2 border-dashed border-neutral-300 bg-neutral-50 p-6 text-center transition hover:border-neutral-500 hover:bg-neutral-100"
+  >
+    <svg
+      xmlns="http://www.w3.org/2000/svg"
+      width="36"
+      height="36"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.5"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+      className="mb-3 text-neutral-600"
+    >
+      <path d="M12 16V4" />
+      <path d="m7 9 5-5 5 5" />
+      <path d="M20 16.5v2A1.5 1.5 0 0 1 18.5 20h-13A1.5 1.5 0 0 1 4 18.5v-2" />
+    </svg>
+
+    <span className="text-sm font-semibold text-neutral-900">
+      {selectedFile
+        ? "Choose a different image"
+        : "Choose Product Image"}
+    </span>
+
+    <span className="mt-1 text-sm text-neutral-600">
+      Click here to browse files on your computer
+    </span>
+
+    <span className="mt-3 rounded-md border bg-white px-4 py-2 text-sm font-medium">
+      Browse Files
+    </span>
+
+    <span className="mt-3 text-xs text-neutral-500">
+      JPG, PNG or WebP · Maximum size: 10 MB
+    </span>
+
+    {selectedFile && (
+      <span className="mt-3 max-w-full break-all text-sm font-medium text-neutral-800">
+        Selected: {selectedFile.name}
+      </span>
+    )}
+  </label>
+
+  <input
+    id="product-image-file"
+    type="file"
+    accept="image/jpeg,image/png,image/webp"
+    onChange={handleFileChange}
+    disabled={isUploading}
+    className="sr-only"
+  />
+</div>
 
             <input
               id="product-image-file"

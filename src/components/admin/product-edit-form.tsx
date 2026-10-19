@@ -657,7 +657,7 @@ export function ProductEditForm({
           Product Images
         </h2>
 
-        <p className="mt-2 text-sm text-muted-foreground">
+        <p className="mt-1 text-sm text-muted-foreground">
           Upload and manage product images.
           The first uploaded image becomes the
           primary image automatically.
