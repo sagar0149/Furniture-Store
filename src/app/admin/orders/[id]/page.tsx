@@ -2,6 +2,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 
+import { CancelOrderButton } from "@/components/admin/cancel-order-button";
 import { updateAdminOrderStatusAction } from "@/actions/admin-orders";
 import { requireAdmin } from "@/lib/auth/permissions";
 import { formatCurrency } from "@/lib/currency";
@@ -17,7 +18,6 @@ const STATUSES = [
   "SHIPPED",
   "OUT_FOR_DELIVERY",
   "DELIVERED",
-  "CANCELLED",
 ] as const;
 
 type Props = {
@@ -42,7 +42,9 @@ export default async function AdminOrderDetailsPage({
   const { updated } = await searchParams;
 
   if (
-    !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id)
+    !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(
+      id,
+    )
   ) {
     notFound();
   }
@@ -54,15 +56,18 @@ export default async function AdminOrderDetailsPage({
   }
 
   const items = await getOrderItems(order.id);
-
   const currency = order.currency;
 
+  const isCancelled = order.status === "CANCELLED";
+  const isDelivered = order.status === "DELIVERED";
+  const canCancel = !isCancelled && !isDelivered;
+
   return (
-    <main className="p-4 sm:p-6 lg:p-8">
+    <main className="min-h-screen bg-background p-4 sm:p-6 lg:p-8">
       <div className="mx-auto max-w-5xl">
         <Link
           href="/admin/orders"
-          className="text-sm text-muted-foreground hover:text-foreground"
+          className="text-sm text-muted-foreground transition hover:text-foreground"
         >
           ← Back to Orders
         </Link>
@@ -91,10 +96,9 @@ export default async function AdminOrderDetailsPage({
         )}
 
         <div className="grid gap-6 lg:grid-cols-3">
-          <section className="rounded-xl border p-5 lg:col-span-2">
-            <h2 className="text-lg font-semibold">
-              Order Items
-            </h2>
+          {/* Order Items and Summary */}
+          <section className="rounded-xl border bg-card p-5 lg:col-span-2">
+            <h2 className="text-lg font-semibold">Order Items</h2>
 
             {items.length === 0 ? (
               <p className="mt-4 text-sm text-muted-foreground">
@@ -123,18 +127,12 @@ export default async function AdminOrderDetailsPage({
 
                     <div className="text-right">
                       <p className="font-medium">
-                        {formatCurrency(
-                          orderItem.finalPrice,
-                          currency,
-                        )}
+                        {formatCurrency(orderItem.finalPrice, currency)}
                       </p>
 
                       <p className="mt-1 text-xs text-muted-foreground">
                         Unit price:{" "}
-                        {formatCurrency(
-                          orderItem.unitPrice,
-                          currency,
-                        )}
+                        {formatCurrency(orderItem.unitPrice, currency)}
                       </p>
                     </div>
                   </div>
@@ -144,123 +142,150 @@ export default async function AdminOrderDetailsPage({
 
             <div className="mt-5 space-y-3 border-t pt-5 text-sm">
               <div className="flex justify-between gap-4">
-                <span className="text-muted-foreground">
-                  Subtotal
-                </span>
-                <span>
-                  {formatCurrency(order.subtotal, currency)}
-                </span>
+                <span className="text-muted-foreground">Subtotal</span>
+                <span>{formatCurrency(order.subtotal, currency)}</span>
               </div>
 
               <div className="flex justify-between gap-4">
-                <span className="text-muted-foreground">
-                  Discount
-                </span>
+                <span className="text-muted-foreground">Discount</span>
                 <span>
                   −{formatCurrency(order.discountAmount, currency)}
                 </span>
               </div>
 
               <div className="flex justify-between gap-4">
-                <span className="text-muted-foreground">
-                  Shipping
-                </span>
-                <span>
-                  {formatCurrency(order.shippingAmount, currency)}
-                </span>
+                <span className="text-muted-foreground">Shipping</span>
+                <span>{formatCurrency(order.shippingAmount, currency)}</span>
               </div>
 
               <div className="flex justify-between gap-4">
-                <span className="text-muted-foreground">
-                  Tax
-                </span>
-                <span>
-                  {formatCurrency(order.taxAmount, currency)}
-                </span>
+                <span className="text-muted-foreground">Tax</span>
+                <span>{formatCurrency(order.taxAmount, currency)}</span>
               </div>
 
               <div className="flex justify-between gap-4 border-t pt-3 text-base font-semibold">
                 <span>Total</span>
-                <span>
-                  {formatCurrency(order.totalAmount, currency)}
-                </span>
+                <span>{formatCurrency(order.totalAmount, currency)}</span>
               </div>
             </div>
           </section>
 
+          {/* Order Status, Cancellation, Customer and Address */}
           <div className="space-y-6">
-            <section className="rounded-xl border p-5">
-              <h2 className="text-lg font-semibold">
-                Order Status
-              </h2>
+            <section className="rounded-xl border bg-card p-5">
+              <div className="flex items-start justify-between gap-3">
+                <h2 className="text-lg font-semibold">Order Status</h2>
 
-              <p className="mt-2 text-sm text-muted-foreground">
-                Current status:{" "}
-                {order.status.replaceAll("_", " ")}
+                <span
+                  className={`rounded-full px-3 py-1 text-xs font-semibold ${
+                    isCancelled
+                      ? "bg-red-100 text-red-700 dark:bg-red-950 dark:text-red-300"
+                      : isDelivered
+                        ? "bg-green-100 text-green-700 dark:bg-green-950 dark:text-green-300"
+                        : "bg-blue-100 text-blue-700 dark:bg-blue-950 dark:text-blue-300"
+                  }`}
+                >
+                  {order.status.replaceAll("_", " ")}
+                </span>
+              </div>
+
+              <p className="mt-3 text-sm text-muted-foreground">
+                Update the fulfillment status of this order.
               </p>
 
-              <form
-                action={updateAdminOrderStatusAction}
-                className="mt-4 space-y-4"
-              >
-                <input
-                  type="hidden"
-                  name="orderId"
-                  value={order.id}
-                />
-
-                <label
-                  htmlFor="status"
-                  className="block text-sm font-medium"
+              {canCancel ? (
+                <form
+                  action={updateAdminOrderStatusAction}
+                  className="mt-4 space-y-4"
                 >
-                  New status
-                </label>
+                  <input
+                    type="hidden"
+                    name="orderId"
+                    value={order.id}
+                  />
 
-                <select
-                  id="status"
-                  name="status"
-                  defaultValue={order.status}
-                  required
-                  className="w-full rounded-md border bg-background px-3 py-2 text-sm"
-                >
-                  {STATUSES.map((status) => (
-                    <option key={status} value={status}>
-                      {status.replaceAll("_", " ")}
-                    </option>
-                  ))}
-                </select>
+                  <label
+                    htmlFor="status"
+                    className="block text-sm font-medium"
+                  >
+                    New status
+                  </label>
 
-                <button
-                  type="submit"
-                  className="w-full rounded-md bg-primary px-4 py-2.5 text-sm font-medium text-primary-foreground hover:opacity-90"
-                >
-                  Save Status
-                </button>
-              </form>
+                  <select
+                    id="status"
+                    name="status"
+                    defaultValue={order.status}
+                    required
+                    className="w-full rounded-lg border bg-background px-3 py-2.5 text-sm"
+                  >
+                    {STATUSES.map((status) => (
+                      <option key={status} value={status}>
+                        {status.replaceAll("_", " ")}
+                      </option>
+                    ))}
+                  </select>
 
-              <p className="mt-3 text-xs text-muted-foreground">
-                Cancelling an order does not automatically issue a refund or restore stock.
-              </p>
+                  <button
+                    type="submit"
+                    className="w-full rounded-lg bg-primary px-4 py-2.5 text-sm font-semibold text-primary-foreground transition hover:opacity-90"
+                  >
+                    Save Status
+                  </button>
+                </form>
+              ) : (
+                <div className="mt-4 rounded-lg border p-3 text-sm text-muted-foreground">
+                  {isCancelled
+                    ? "This order has been cancelled."
+                    : "This order has been delivered. Status updates and cancellation are disabled."}
+                </div>
+              )}
             </section>
 
-            <section className="rounded-xl border p-5">
-              <h2 className="text-lg font-semibold">
-                Customer
-              </h2>
+            {/* Dedicated Cancellation Section */}
+            {canCancel && (
+              <section className="rounded-xl border border-red-300 bg-red-50/50 p-5 dark:border-red-900 dark:bg-red-950/20">
+                <div className="flex items-center gap-2">
+                  <span
+                    aria-hidden="true"
+                    className="flex h-8 w-8 items-center justify-center rounded-lg bg-red-100 text-red-700 dark:bg-red-950 dark:text-red-300"
+                  >
+                    !
+                  </span>
+
+                  <h2 className="text-lg font-semibold text-red-800 dark:text-red-300">
+                    Danger Zone
+                  </h2>
+                </div>
+
+                <p className="mt-3 text-sm leading-6 text-muted-foreground">
+                  Permanently mark this order as cancelled. The system will
+                  attempt to restore its product stock and record inventory
+                  transactions. This action does not automatically refund
+                  the customer.
+                </p>
+
+                <div className="mt-4">
+                  <CancelOrderButton
+                    orderId={order.id}
+                    orderNumber={order.orderNumber}
+                  />
+                </div>
+              </section>
+            )}
+
+            {/* Customer Details */}
+            <section className="rounded-xl border bg-card p-5">
+              <h2 className="text-lg font-semibold">Customer</h2>
 
               <div className="mt-4 space-y-3 text-sm">
                 <div>
                   <p className="text-muted-foreground">Name</p>
-                  <p className="mt-1 font-medium">
-                    {order.customerName}
-                  </p>
+                  <p className="mt-1 font-medium">{order.customerName}</p>
                 </div>
 
                 <div>
                   <p className="text-muted-foreground">Email</p>
-                  <p className="mt-1 break-all">
-                    {order.customerEmail}
-                  </p>
+                  <p className="mt-1 break-all">{order.customerEmail}</p>
                 </div>
 
                 <div>
@@ -272,16 +297,12 @@ export default async function AdminOrderDetailsPage({
               </div>
             </section>
 
-            <section className="rounded-xl border p-5">
-              <h2 className="text-lg font-semibold">
-                Shipping Address
-              </h2>
+            {/* Shipping Address */}
+            <section className="rounded-xl border bg-card p-5">
+              <h2 className="text-lg font-semibold">Shipping Address</h2>
 
               <div className="mt-4 space-y-1 text-sm">
-                <p className="font-medium">
-                  {order.shippingFullName}
-                </p>
-
+                <p className="font-medium">{order.shippingFullName}</p>
                 <p>{order.shippingPhone}</p>
                 <p>{order.shippingAddressLine1}</p>
 
