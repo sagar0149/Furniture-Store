@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 
-import { updateCartItemAction } from "@/actions/cart/update";
+import { updateCartQuantityAction } from "@/actions/cart/update";
 import { removeCartItemAction } from "@/actions/cart/remove";
 
 type CartItemControlsProps = {
@@ -45,7 +45,7 @@ export function CartItemControls({
 
     try {
       const result =
-        await updateCartItemAction(
+        await updateCartQuantityAction(
           cartItemId,
           newQuantity,
         );
@@ -172,3 +172,4 @@ export function CartItemControls({
     </div>
   );
 }
+

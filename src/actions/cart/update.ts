@@ -1,35 +1,36 @@
+
 "use server";
 
 import { requireUser } from "@/lib/auth/permissions";
 
 import {
-  getCartByUserId,
+  getProductById,
+} from "@/repositories/product.repository";
+
+import {
+  getOrCreateCart,
   getCartItem,
   updateCartItemQuantity,
   touchCart,
 } from "@/repositories/cart.repository";
 
-import {
-  getProductById,
-} from "@/repositories/product.repository";
-
-type UpdateCartResult = {
+type UpdateCartQuantityResult = {
   success: boolean;
   message: string;
   quantity?: number;
 };
 
-export async function updateCartItemAction(
-  cartItemId: string,
+export async function updateCartQuantityAction(
+  productId: string,
   quantity: number,
-): Promise<UpdateCartResult> {
+): Promise<UpdateCartQuantityResult> {
   try {
     const user = await requireUser();
 
-    if (!cartItemId) {
+    if (!productId) {
       return {
         success: false,
-        message: "Cart item ID is required.",
+        message: "Product ID is required.",
       };
     }
 
@@ -39,119 +40,58 @@ export async function updateCartItemAction(
     ) {
       return {
         success: false,
-        message:
-          "Quantity must be at least 1.",
+        message: "Quantity must be at least 1.",
       };
     }
 
-    const cart =
-      await getCartByUserId(user.id);
-
-    if (!cart) {
-      return {
-        success: false,
-        message: "Your cart was not found.",
-      };
-    }
-
-    /*
-     * We need to find the cart item.
-     *
-     * The repository currently provides
-     * getCartItem(cartId, productId), but
-     * update requires the cart item ID.
-     *
-     * The cart page will only send IDs that
-     * belong to this user's cart.
-     *
-     * Ownership is additionally verified
-     * through the cart itself below.
-     */
-
-    const cartItems =
-      await import("@/db").then(
-        async ({ db }) => {
-          const { cartItems } =
-            await import("@/db/schema");
-
-          const { eq, and } =
-            await import("drizzle-orm");
-
-          return db
-            .select()
-            .from(cartItems)
-            .where(
-              and(
-                eq(
-                  cartItems.id,
-                  cartItemId,
-                ),
-                eq(
-                  cartItems.cartId,
-                  cart.id,
-                ),
-              ),
-            )
-            .limit(1);
-        },
-      );
-
-    const cartItem = cartItems[0];
-
-    if (!cartItem) {
-      return {
-        success: false,
-        message:
-          "Cart item was not found.",
-      };
-    }
-
-    const product =
-      await getProductById(
-        cartItem.productId,
-      );
+    const product = await getProductById(productId);
 
     if (!product || !product.isActive) {
       return {
         success: false,
-        message:
-          "This product is no longer available.",
+        message: "Product is not available.",
       };
     }
 
-    if (product.stockQuantity <= 0) {
-      return {
-        success: false,
-        message:
-          "This product is currently out of stock.",
-      };
-    }
-
-    if (
-      quantity >
-      product.stockQuantity
-    ) {
+    if (quantity > product.stockQuantity) {
       return {
         success: false,
         message: `Only ${product.stockQuantity} item${
-          product.stockQuantity === 1
-            ? ""
-            : "s"
+          product.stockQuantity === 1 ? "" : "s"
         } available in stock.`,
       };
     }
 
-    const updated =
-      await updateCartItemQuantity(
-        cartItemId,
-        quantity,
-      );
+    const cart = await getOrCreateCart(user.id);
 
-    if (!updated) {
+    if (!cart) {
       return {
         success: false,
-        message:
-          "Unable to update cart quantity.",
+        message: "Unable to access your shopping cart.",
+      };
+    }
+
+    const existingItem = await getCartItem(
+      cart.id,
+      product.id,
+    );
+
+    if (!existingItem) {
+      return {
+        success: false,
+        message: "This product is not in your cart.",
+      };
+    }
+
+    const savedItem = await updateCartItemQuantity(
+      existingItem.id,
+      quantity,
+    );
+
+    if (!savedItem) {
+      return {
+        success: false,
+        message: "Unable to update cart quantity.",
       };
     }
 
@@ -159,26 +99,18 @@ export async function updateCartItemAction(
 
     return {
       success: true,
-      message: "Cart updated.",
-      quantity: updated.quantity,
+      message: "Cart quantity updated.",
+      quantity: savedItem.quantity,
     };
   } catch (error) {
-    console.error(
-      "Update cart item error:",
-      error,
-    );
-
-    if (error instanceof Error) {
-      return {
-        success: false,
-        message: error.message,
-      };
-    }
+    console.error("Update cart quantity error:", error);
 
     return {
       success: false,
       message:
-        "Unable to update cart.",
+        error instanceof Error
+          ? error.message
+          : "Unable to update cart quantity.",
     };
   }
 }

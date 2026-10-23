@@ -10,9 +10,34 @@ import {
   getProductImages,
 } from "@/repositories/product.repository";
 
-import { getCategoryById } from "@/repositories/category.repository";
-import { getStoreSettings } from "@/repositories/store-settings.repository";
-import { formatCurrency } from "@/lib/currency";
+import {
+  getCategoryById,
+} from "@/repositories/category.repository";
+
+import {
+  getStoreSettings,
+} from "@/repositories/store-settings.repository";
+
+import {
+  getEligibleDiscounts,
+} from "@/repositories/discount.repository";
+
+import {
+  getCartByUserId,
+  getCartItem,
+} from "@/repositories/cart.repository";
+
+import {
+  calculateProductDiscount,
+} from "@/lib/discounts";
+
+import {
+  formatCurrency,
+} from "@/lib/currency";
+
+import {
+  getCurrentUser,
+} from "@/lib/auth/session";
 
 type ProductDetailPageProps = {
   params: Promise<{
@@ -33,7 +58,8 @@ export async function generateMetadata({
   }
 
   const settings = await getStoreSettings();
-  const storeName = settings?.storeName?.trim() || "Furniture Store";
+  const storeName =
+    settings?.storeName?.trim() || "Furniture Store";
 
   return {
     title: `${product.name} | ${storeName}`,
@@ -51,34 +77,83 @@ export default async function ProductDetailPage({
     notFound();
   }
 
-  const [images, category, settings] = await Promise.all([
+  const [
+    images,
+    category,
+    settings,
+    eligibleDiscounts,
+  ] = await Promise.all([
     getProductImages(product.id),
     getCategoryById(product.categoryId),
     getStoreSettings(),
+    getEligibleDiscounts([product.id]),
   ]);
 
-  const currency = settings?.currency?.trim() || "USD";
-  const storeName = settings?.storeName?.trim() || "Furniture Store";
+  const currency =
+    settings?.currency?.trim() || "USD";
 
-  const currentPrice = Number(
-    product.salePrice ?? product.regularPrice,
+  const storeName =
+    settings?.storeName?.trim() || "Furniture Store";
+
+  // Calculate the best discount eligible for this product.
+  const pricing = calculateProductDiscount(
+    product,
+    eligibleDiscounts,
   );
-  const regularPrice = Number(product.regularPrice);
 
-  const hasSale =
+  const hasProductSale =
     product.salePrice !== null &&
     product.salePrice !== undefined &&
-    currentPrice < regularPrice;
+    Number(product.salePrice) <
+      Number(product.regularPrice);
 
-  const discount =
-    hasSale && regularPrice > 0
-      ? Math.round(((regularPrice - currentPrice) / regularPrice) * 100)
+  const hasPromotion = pricing.discountAmount > 0;
+
+  const hasAnyDiscount =
+    hasProductSale || hasPromotion;
+
+  const discountPercentage =
+    pricing.basePrice > 0 && hasPromotion
+      ? Math.round(
+          (pricing.discountAmount /
+            pricing.basePrice) *
+            100,
+        )
       : 0;
 
-  const isOutOfStock = product.stockQuantity <= 0;
+  const isOutOfStock =
+    product.stockQuantity <= 0;
+
   const isLowStock =
     !isOutOfStock &&
-    product.stockQuantity <= product.lowStockThreshold;
+    product.stockQuantity <=
+      product.lowStockThreshold;
+
+  // Retrieve the current user's saved quantity without
+  // requiring guests to sign in just to view a product.
+  let initialQuantity = 0;
+
+  try {
+    const user = await getCurrentUser();
+
+    if (user) {
+      const cart = await getCartByUserId(user.id);
+
+      if (cart) {
+        const cartItem = await getCartItem(
+          cart.id,
+          product.id,
+        );
+
+        initialQuantity = cartItem?.quantity ?? 0;
+      }
+    }
+  } catch (error) {
+    console.error(
+      "Unable to load product cart quantity:",
+      error,
+    );
+  }
 
   const galleryImages = images.map((image) => ({
     id: image.id,
@@ -101,9 +176,14 @@ export default async function ProductDetailPage({
             <Link href="/" className="hover:text-[#806747]">
               Home
             </Link>
-            <Link href="/products" className="hover:text-[#806747]">
+
+            <Link
+              href="/products"
+              className="hover:text-[#806747]"
+            >
               Products
             </Link>
+
             <Link href="/cart" className="hover:text-[#806747]">
               Cart
             </Link>
@@ -119,14 +199,20 @@ export default async function ProductDetailPage({
           <Link href="/" className="hover:text-[#806747]">
             Home
           </Link>
+
           <span>/</span>
-          <Link href="/products" className="hover:text-[#806747]">
+
+          <Link
+            href="/products"
+            className="hover:text-[#806747]"
+          >
             Products
           </Link>
 
           {category && (
             <>
               <span>/</span>
+
               <Link
                 href={`/categories/${category.slug}`}
                 className="hover:text-[#806747]"
@@ -137,6 +223,7 @@ export default async function ProductDetailPage({
           )}
 
           <span>/</span>
+
           <span className="max-w-[220px] truncate text-gray-900">
             {product.name}
           </span>
@@ -172,20 +259,50 @@ export default async function ProductDetailPage({
 
             <div className="mt-6 flex flex-wrap items-center gap-3">
               <span className="text-2xl font-bold sm:text-3xl">
-                {formatCurrency(currentPrice, currency)}
+                {formatCurrency(
+                  pricing.finalPrice,
+                  currency,
+                )}
               </span>
 
-              {hasSale && (
-                <>
-                  <span className="text-lg text-gray-500 line-through">
-                    {formatCurrency(regularPrice, currency)}
-                  </span>
-                  <span className="rounded-md bg-red-100 px-2.5 py-1 text-xs font-bold text-red-700">
-                    {discount}% OFF
-                  </span>
-                </>
+              {hasAnyDiscount && (
+                <span className="text-lg text-gray-500 line-through">
+                  {formatCurrency(
+                    pricing.originalPrice,
+                    currency,
+                  )}
+                </span>
+              )}
+
+              {hasPromotion && (
+                <span className="rounded-md bg-red-100 px-2.5 py-1 text-xs font-bold text-red-700">
+                  {discountPercentage}% OFF
+                </span>
+              )}
+
+              {!hasPromotion && hasProductSale && (
+                <span className="rounded-md bg-red-100 px-2.5 py-1 text-xs font-bold text-red-700">
+                  Sale
+                </span>
               )}
             </div>
+
+            {hasPromotion && (
+              <div className="mt-4 rounded-lg border border-red-200 bg-red-50 p-4">
+                <p className="font-semibold text-red-800">
+                  {pricing.discountName}
+                </p>
+
+                <p className="mt-1 text-sm text-red-700">
+                  You save{" "}
+                  {formatCurrency(
+                    pricing.discountAmount,
+                    currency,
+                  )}{" "}
+                  per item.
+                </p>
+              </div>
+            )}
 
             <div className="mt-5">
               {isOutOfStock ? (
@@ -204,9 +321,13 @@ export default async function ProductDetailPage({
             </div>
 
             <div className="mt-7 border-t border-gray-200 pt-6">
-              <h2 className="text-lg font-semibold">Description</h2>
+              <h2 className="text-lg font-semibold">
+                Description
+              </h2>
+
               <p className="mt-3 whitespace-pre-line text-sm leading-7 text-gray-600">
-                {product.description || "No description available."}
+                {product.description ||
+                  "No description available."}
               </p>
             </div>
 
@@ -214,12 +335,18 @@ export default async function ProductDetailPage({
               <AddToCartButton
                 productId={product.id}
                 stockQuantity={product.stockQuantity}
+                initialQuantity={initialQuantity}
               />
             </div>
 
             <div className="mt-7 border-t border-gray-200 pt-5">
-              <p className="text-xs text-gray-500">Product SKU</p>
-              <p className="mt-1 text-sm font-medium">{product.sku}</p>
+              <p className="text-xs text-gray-500">
+                Product SKU
+              </p>
+
+              <p className="mt-1 text-sm font-medium">
+                {product.sku}
+              </p>
             </div>
           </div>
         </div>
@@ -236,7 +363,9 @@ export default async function ProductDetailPage({
               <p className="text-xs uppercase tracking-wide text-gray-500">
                 Material
               </p>
-              <p className="mt-2 text-sm font-medium">{product.material}</p>
+              <p className="mt-2 text-sm font-medium">
+                {product.material}
+              </p>
             </div>
           )}
 
@@ -245,7 +374,9 @@ export default async function ProductDetailPage({
               <p className="text-xs uppercase tracking-wide text-gray-500">
                 Color
               </p>
-              <p className="mt-2 text-sm font-medium">{product.color}</p>
+              <p className="mt-2 text-sm font-medium">
+                {product.color}
+              </p>
             </div>
           )}
 
@@ -254,18 +385,23 @@ export default async function ProductDetailPage({
               <p className="text-xs uppercase tracking-wide text-gray-500">
                 Dimensions
               </p>
-              <p className="mt-2 text-sm font-medium">{product.dimensions}</p>
+              <p className="mt-2 text-sm font-medium">
+                {product.dimensions}
+              </p>
             </div>
           )}
 
-          {product.weight !== null && product.weight !== undefined && (
-            <div>
-              <p className="text-xs uppercase tracking-wide text-gray-500">
-                Weight
-              </p>
-              <p className="mt-2 text-sm font-medium">{product.weight} kg</p>
-            </div>
-          )}
+          {product.weight !== null &&
+            product.weight !== undefined && (
+              <div>
+                <p className="text-xs uppercase tracking-wide text-gray-500">
+                  Weight
+                </p>
+                <p className="mt-2 text-sm font-medium">
+                  {product.weight} kg
+                </p>
+              </div>
+            )}
         </div>
       </section>
 
@@ -276,7 +412,9 @@ export default async function ProductDetailPage({
           <div className="grid gap-8 md:grid-cols-3">
             {product.assemblyInformation && (
               <div>
-                <h2 className="font-semibold">Assembly</h2>
+                <h2 className="font-semibold">
+                  Assembly
+                </h2>
                 <p className="mt-3 whitespace-pre-line text-sm leading-6 text-gray-600">
                   {product.assemblyInformation}
                 </p>
@@ -285,7 +423,9 @@ export default async function ProductDetailPage({
 
             {product.shippingInformation && (
               <div>
-                <h2 className="font-semibold">Shipping</h2>
+                <h2 className="font-semibold">
+                  Shipping
+                </h2>
                 <p className="mt-3 whitespace-pre-line text-sm leading-6 text-gray-600">
                   {product.shippingInformation}
                 </p>
@@ -294,7 +434,9 @@ export default async function ProductDetailPage({
 
             {product.returnInformation && (
               <div>
-                <h2 className="font-semibold">Returns</h2>
+                <h2 className="font-semibold">
+                  Returns
+                </h2>
                 <p className="mt-3 whitespace-pre-line text-sm leading-6 text-gray-600">
                   {product.returnInformation}
                 </p>
@@ -307,8 +449,10 @@ export default async function ProductDetailPage({
       <footer className="w-full border-t border-gray-200 bg-white">
         <div className="flex w-full flex-col gap-3 px-4 py-7 text-sm text-gray-500 sm:flex-row sm:items-center sm:justify-between sm:px-6 lg:px-10 xl:px-12">
           <p>
-            © {new Date().getFullYear()} {storeName}. All rights reserved.
+            © {new Date().getFullYear()} {storeName}.
+            All rights reserved.
           </p>
+
           <Link
             href="/products"
             className="font-medium hover:text-[#806747]"

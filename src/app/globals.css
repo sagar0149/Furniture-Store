@@ -1,6 +1,10 @@
 
 @import "tailwindcss";
 
+/* =========================================================
+   1. LUXURY FURNITURE STORE — DESIGN TOKENS
+========================================================= */
+
 :root {
   --background: #faf8f3;
   --foreground: #29251f;
@@ -8,6 +12,13 @@
   --accent: #a98558;
   --champagne: #e4c69d;
   --walnut: #453326;
+  --border: #e6ded2;
+  --surface: #ffffff;
+  --success: #16845b;
+  --danger: #c4473b;
+  --shadow: 0 12px 35px rgb(69 51 38 / 8%);
+  --shadow-hover: 0 24px 55px rgb(69 51 38 / 14%);
+  --ease-premium: cubic-bezier(0.2, 0.7, 0.2, 1);
 }
 
 @theme inline {
@@ -35,9 +46,12 @@ body {
   width: 100%;
   min-height: 100vh;
   margin: 0;
+  overflow-x: clip;
   background: var(--background);
   color: var(--foreground);
   font-family: Arial, Helvetica, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 
 body,
@@ -51,14 +65,44 @@ body,
 }
 
 button,
-a {
+a,
+input,
+textarea,
+select {
   -webkit-tap-highlight-color: transparent;
 }
 
+button {
+  cursor: pointer;
+}
+
+button:disabled {
+  cursor: not-allowed;
+}
+
 a:focus-visible,
-button:focus-visible {
+button:focus-visible,
+input:focus-visible,
+textarea:focus-visible,
+select:focus-visible {
   outline: 2px solid var(--accent);
   outline-offset: 4px;
+}
+
+/* =========================================================
+   2. GLOBAL PAGE ENTRANCE
+========================================================= */
+
+@keyframes page-enter {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 @keyframes reveal-up {
@@ -72,6 +116,145 @@ button:focus-visible {
     transform: translate3d(0, 0, 0);
   }
 }
+
+@keyframes reveal-down {
+  from {
+    opacity: 0;
+    transform: translateY(-12px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes reveal-left {
+  from {
+    opacity: 0;
+    transform: translateX(-24px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes reveal-right {
+  from {
+    opacity: 0;
+    transform: translateX(24px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes soft-fade {
+  from {
+    opacity: 0;
+  }
+
+  to {
+    opacity: 1;
+  }
+}
+
+.animate-page-enter {
+  animation: page-enter 450ms var(--ease-premium) both;
+}
+
+.animate-reveal {
+  animation: reveal-up 750ms var(--ease-premium) both;
+}
+
+.animate-reveal-delay-1 {
+  animation: reveal-up 750ms 120ms var(--ease-premium) both;
+}
+
+.animate-reveal-delay-2 {
+  animation: reveal-up 750ms 240ms var(--ease-premium) both;
+}
+
+.animate-reveal-delay-3 {
+  animation: reveal-up 750ms 360ms var(--ease-premium) both;
+}
+
+.animate-reveal-down {
+  animation: reveal-down 550ms var(--ease-premium) both;
+}
+
+.animate-reveal-left {
+  animation: reveal-left 650ms var(--ease-premium) both;
+}
+
+.animate-reveal-right {
+  animation: reveal-right 650ms var(--ease-premium) both;
+}
+
+.animate-soft-fade {
+  animation: soft-fade 400ms ease both;
+}
+
+/* =========================================================
+   3. STAGGERED ENTRANCES
+   Add animate-stagger to a parent container.
+========================================================= */
+
+@keyframes stagger-enter {
+  from {
+    opacity: 0;
+    transform: translateY(16px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-stagger > * {
+  animation: stagger-enter 600ms var(--ease-premium) both;
+}
+
+.animate-stagger > *:nth-child(1) {
+  animation-delay: 40ms;
+}
+
+.animate-stagger > *:nth-child(2) {
+  animation-delay: 100ms;
+}
+
+.animate-stagger > *:nth-child(3) {
+  animation-delay: 160ms;
+}
+
+.animate-stagger > *:nth-child(4) {
+  animation-delay: 220ms;
+}
+
+.animate-stagger > *:nth-child(5) {
+  animation-delay: 280ms;
+}
+
+.animate-stagger > *:nth-child(6) {
+  animation-delay: 340ms;
+}
+
+.animate-stagger > *:nth-child(7) {
+  animation-delay: 400ms;
+}
+
+.animate-stagger > *:nth-child(8) {
+  animation-delay: 460ms;
+}
+
+/* =========================================================
+   4. FURNITURE HERO ANIMATIONS
+========================================================= */
 
 @keyframes float-furniture {
   0%,
@@ -107,16 +290,14 @@ button:focus-visible {
   }
 }
 
-.animate-reveal {
-  animation: reveal-up 750ms cubic-bezier(0.2, 0.7, 0.2, 1) both;
-}
+@keyframes shine {
+  from {
+    transform: translateX(-150%) skewX(-18deg);
+  }
 
-.animate-reveal-delay-1 {
-  animation: reveal-up 750ms 120ms cubic-bezier(0.2, 0.7, 0.2, 1) both;
-}
-
-.animate-reveal-delay-2 {
-  animation: reveal-up 750ms 240ms cubic-bezier(0.2, 0.7, 0.2, 1) both;
+  to {
+    transform: translateX(250%) skewX(-18deg);
+  }
 }
 
 .animate-furniture-float {
@@ -131,51 +312,16 @@ button:focus-visible {
   animation: hero-progress 6s linear forwards;
 }
 
-.furniture-card {
-  transform: perspective(1200px) rotateX(0deg) rotateY(0deg) translateY(0);
-  transform-style: preserve-3d;
-  transition:
-    transform 450ms cubic-bezier(0.2, 0.7, 0.2, 1),
-    box-shadow 450ms ease,
-    border-color 350ms ease;
-  will-change: transform;
-}
-
-.furniture-card:hover {
-  transform: perspective(1200px) rotateX(1.5deg) rotateY(-1.5deg)
-    translateY(-7px);
-  box-shadow: 0 25px 55px rgb(69 51 38 / 12%);
-  border-color: #cbb28e;
-}
-
-.furniture-card img {
-  transition: transform 700ms cubic-bezier(0.2, 0.7, 0.2, 1);
-}
-
-.furniture-card:hover img {
-  transform: scale(1.065);
-}
-
-.premium-button {
-  position: relative;
-  overflow: hidden;
-  transition:
-    transform 250ms ease,
-    box-shadow 250ms ease,
-    background-color 250ms ease;
-}
-
-.premium-button:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 10px 25px rgb(41 37 31 / 15%);
-}
-
 .hero-panel {
   position: relative;
   isolation: isolate;
   overflow: hidden;
   background:
-    radial-gradient(ellipse at 75% 20%, rgb(228 198 157 / 65%), transparent 42%),
+    radial-gradient(
+      ellipse at 75% 20%,
+      rgb(228 198 157 / 65%),
+      transparent 42%
+    ),
     linear-gradient(135deg, #eee4d5 0%, #d9c5a9 48%, #a98c6b 100%);
 }
 
@@ -190,6 +336,7 @@ button:focus-visible {
   background-size: 22px 22px;
   content: "";
   opacity: 0.3;
+  pointer-events: none;
 }
 
 .hero-orb {
@@ -202,12 +349,379 @@ button:focus-visible {
   pointer-events: none;
 }
 
+/* =========================================================
+   5. PRODUCT CARDS AND IMAGES
+========================================================= */
+
+.furniture-card {
+  overflow: hidden;
+  border-color: var(--border);
+  transform: perspective(1200px) rotateX(0deg) rotateY(0deg)
+    translateY(0);
+  transform-style: preserve-3d;
+  transition:
+    transform 450ms var(--ease-premium),
+    box-shadow 450ms ease,
+    border-color 350ms ease;
+}
+
+.furniture-card:hover {
+  transform: perspective(1200px) rotateX(1deg) rotateY(-1deg)
+    translateY(-6px);
+  box-shadow: var(--shadow-hover);
+  border-color: #cbb28e;
+}
+
+.furniture-card img {
+  transition:
+    transform 700ms var(--ease-premium),
+    filter 500ms ease;
+}
+
+.furniture-card:hover img {
+  transform: scale(1.055);
+}
+
+.product-image {
+  overflow: hidden;
+  background: #f0ebe3;
+}
+
+.product-image img {
+  transition:
+    transform 650ms var(--ease-premium),
+    opacity 300ms ease;
+}
+
+.product-image:hover img {
+  transform: scale(1.045);
+}
+
+/* =========================================================
+   6. BUTTONS AND INTERACTIVE ELEMENTS
+========================================================= */
+
+.premium-button {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  transition:
+    transform 250ms ease,
+    box-shadow 250ms ease,
+    background-color 250ms ease,
+    border-color 250ms ease,
+    color 250ms ease;
+}
+
+.premium-button::after {
+  position: absolute;
+  z-index: -1;
+  top: 0;
+  left: 0;
+  width: 40%;
+  height: 100%;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgb(255 255 255 / 20%),
+    transparent
+  );
+  content: "";
+  opacity: 0;
+  pointer-events: none;
+}
+
+.premium-button:hover::after {
+  opacity: 1;
+  animation: shine 700ms ease;
+}
+
+.premium-button:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 10px 25px rgb(41 37 31 / 15%);
+}
+
+.premium-button:active {
+  transform: translateY(0) scale(0.98);
+}
+
+button,
+[role="button"] {
+  transition:
+    background-color 200ms ease,
+    border-color 200ms ease,
+    color 200ms ease,
+    opacity 200ms ease;
+}
+
+/* =========================================================
+   7. INPUTS, SEARCH AND FORMS
+========================================================= */
+
+input,
+textarea,
+select {
+  transition:
+    border-color 200ms ease,
+    box-shadow 200ms ease,
+    background-color 200ms ease;
+}
+
+input:focus,
+textarea:focus,
+select:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px rgb(169 133 88 / 12%);
+}
+
+input::placeholder,
+textarea::placeholder {
+  color: #a39a8e;
+  transition: color 200ms ease;
+}
+
+input:focus::placeholder,
+textarea:focus::placeholder {
+  color: #c4b9aa;
+}
+
+/* =========================================================
+   8. CART QUANTITY SELECTOR
+========================================================= */
+
+@keyframes quantity-pop {
+  0% {
+    opacity: 0.4;
+    transform: scale(0.85);
+  }
+
+  70% {
+    opacity: 1;
+    transform: scale(1.08);
+  }
+
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes message-enter {
+  from {
+    opacity: 0;
+    transform: translateY(-3px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.quantity-selector {
+  display: inline-flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  border: 1px solid var(--border);
+  border-radius: 0.5rem;
+  background: var(--surface);
+  transition:
+    border-color 200ms ease,
+    box-shadow 200ms ease;
+}
+
+.quantity-selector:focus-within {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px rgb(169 133 88 / 10%);
+}
+
+.quantity-selector button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition:
+    background-color 180ms ease,
+    transform 180ms ease,
+    opacity 180ms ease;
+}
+
+.quantity-selector button:not(:disabled):active {
+  transform: scale(0.88);
+}
+
+.quantity-value-animated {
+  animation: quantity-pop 220ms var(--ease-premium) both;
+}
+
+.cart-status-message {
+  animation: message-enter 220ms ease both;
+}
+
+/* =========================================================
+   9. BADGES, ALERTS AND NOTIFICATIONS
+========================================================= */
+
+@keyframes notification-enter {
+  from {
+    opacity: 0;
+    transform: translateY(-8px) scale(0.98);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.notification-enter {
+  animation: notification-enter 300ms var(--ease-premium) both;
+}
+
+.status-badge {
+  transition:
+    transform 200ms ease,
+    box-shadow 200ms ease;
+}
+
+.status-badge:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgb(69 51 38 / 8%);
+}
+
+/* =========================================================
+   10. NAVIGATION AND LINKS
+========================================================= */
+
+.nav-link {
+  position: relative;
+  text-decoration: none;
+}
+
+.nav-link::after {
+  position: absolute;
+  right: 0;
+  bottom: -4px;
+  left: 0;
+  height: 1px;
+  background: currentColor;
+  content: "";
+  transform: scaleX(0);
+  transform-origin: right;
+  transition: transform 280ms var(--ease-premium);
+}
+
+.nav-link:hover::after,
+.nav-link[aria-current="page"]::after {
+  transform: scaleX(1);
+  transform-origin: left;
+}
+
+a {
+  transition:
+    color 200ms ease,
+    opacity 200ms ease;
+}
+
+/* =========================================================
+   11. LOADING STATES
+========================================================= */
+
+@keyframes shimmer {
+  from {
+    background-position: 200% 0;
+  }
+
+  to {
+    background-position: -200% 0;
+  }
+}
+
+.skeleton {
+  background: linear-gradient(
+    100deg,
+    #eee8de 20%,
+    #f8f5ef 40%,
+    #eee8de 60%
+  );
+  background-size: 200% 100%;
+  animation: shimmer 1.5s ease-in-out infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.animate-spin-slow {
+  animation: spin 1.2s linear infinite;
+}
+
+/* =========================================================
+   12. SCROLLBARS
+========================================================= */
+
+* {
+  scrollbar-width: thin;
+  scrollbar-color: #cbb89d transparent;
+}
+
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  border: 2px solid transparent;
+  border-radius: 999px;
+  background: #cbb89d;
+  background-clip: padding-box;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background-color: var(--accent);
+}
+
+/* =========================================================
+   13. RESPONSIVE AND TOUCH DEVICES
+========================================================= */
+
+@media (hover: hover) and (pointer: fine) {
+  .furniture-card:hover {
+    box-shadow: var(--shadow-hover);
+  }
+}
+
 @media (hover: none) {
   .furniture-card:hover {
     transform: none;
     box-shadow: none;
   }
+
+  .furniture-card:hover img {
+    transform: none;
+  }
 }
+
+@media (max-width: 640px) {
+  .hero-orb {
+    width: 10rem;
+    height: 10rem;
+  }
+
+  .furniture-card:hover {
+    transform: none;
+  }
+}
+
+/* =========================================================
+   14. ACCESSIBILITY — RESPECT REDUCED MOTION
+========================================================= */
 
 @media (prefers-reduced-motion: reduce) {
   *,
@@ -221,7 +735,251 @@ button:focus-visible {
 
   .furniture-card,
   .furniture-card:hover,
-  .premium-button:hover {
+  .premium-button:hover,
+  .animate-furniture-float,
+  .hero-glow {
     transform: none;
+  }
+}
+
+/* =========================================
+   PREMIUM MARKETPLACE HEADER ANIMATIONS
+========================================= */
+
+@keyframes header-enter {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes announcement-glide {
+  from {
+    transform: translateX(-130%);
+  }
+  to {
+    transform: translateX(250%);
+  }
+}
+
+@keyframes header-suggestion-enter {
+  from {
+    opacity: 0;
+    transform: translateY(-5px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.marketplace-header {
+  animation: header-enter 550ms cubic-bezier(0.2, 0.7, 0.2, 1) both;
+}
+
+.header-announcement {
+  position: relative;
+}
+
+.announcement-shimmer {
+  position: absolute;
+  inset-block: 0;
+  left: 0;
+  width: 25%;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgb(228 198 157 / 18%),
+    transparent
+  );
+  pointer-events: none;
+  animation: announcement-glide 7s ease-in-out infinite;
+}
+
+.header-main > * {
+  animation: header-enter 550ms cubic-bezier(0.2, 0.7, 0.2, 1) both;
+}
+
+.header-main > *:nth-child(1) {
+  animation-delay: 50ms;
+}
+
+.header-main > *:nth-child(2) {
+  animation-delay: 110ms;
+}
+
+.header-main > *:nth-child(3) {
+  animation-delay: 170ms;
+}
+
+.header-main > *:nth-child(4) {
+  animation-delay: 230ms;
+}
+
+.header-logo {
+  transition: color 250ms ease;
+}
+
+.header-logo:hover {
+  color: #806747;
+}
+
+.header-search {
+  transition:
+    transform 250ms ease,
+    box-shadow 250ms ease;
+}
+
+.header-search-button::before {
+  position: absolute;
+  inset: 0;
+  background: #806747;
+  content: "";
+  transform: scaleX(0);
+  transform-origin: right;
+  transition: transform 300ms ease;
+}
+
+.header-search-button:hover::before {
+  transform: scaleX(1);
+  transform-origin: left;
+}
+
+.header-action {
+  display: flex;
+  min-width: 44px;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  color: #453326;
+  font-size: 12px;
+  transition:
+    color 250ms ease,
+    transform 250ms ease;
+}
+
+.header-action:hover {
+  color: #a98558;
+  transform: translateY(-2px);
+}
+
+.header-action-icon {
+  display: inline-flex;
+  height: 25px;
+  align-items: center;
+  justify-content: center;
+  font-size: 19px;
+  transition: transform 250ms ease;
+}
+
+.header-action:hover .header-action-icon {
+  transform: scale(1.12);
+}
+
+.header-nav-link::after {
+  position: absolute;
+  right: 0;
+  bottom: -5px;
+  left: 0;
+  height: 1.5px;
+  background: #a98558;
+  content: "";
+  transform: scaleX(0);
+  transform-origin: right;
+  transition: transform 300ms cubic-bezier(0.2, 0.7, 0.2, 1);
+}
+
+.header-nav-link:hover::after {
+  transform: scaleX(1);
+  transform-origin: left;
+}
+
+.header-all-categories span {
+  display: inline-block;
+  transition: transform 250ms ease;
+}
+
+.header-all-categories:hover span {
+  transform: translateX(4px);
+}
+
+.header-suggestions {
+  animation: header-suggestion-enter 200ms ease both;
+  transform-origin: top;
+}
+
+.suggestion-item {
+  animation: header-suggestion-enter 220ms ease both;
+  transition:
+    background-color 200ms ease,
+    padding-left 200ms ease;
+}
+
+.suggestion-item:hover {
+  padding-left: 20px;
+}
+
+.header-mobile-cart {
+  transition:
+    transform 200ms ease,
+    background-color 250ms ease;
+}
+
+.header-mobile-menu {
+  display: grid;
+  grid-template-rows: 0fr;
+  opacity: 0;
+  visibility: hidden;
+  transition:
+    grid-template-rows 300ms ease,
+    opacity 250ms ease,
+    visibility 300ms;
+}
+
+.header-mobile-menu > nav {
+  min-height: 0;
+  overflow-y: auto;
+}
+
+.header-mobile-menu-open {
+  grid-template-rows: 1fr;
+  opacity: 1;
+  visibility: visible;
+}
+
+.mobile-nav-link {
+  border-bottom: 1px solid #f1ece5;
+  padding: 13px 4px;
+  color: #453326;
+  font-size: 14px;
+  transition:
+    color 200ms ease,
+    padding-left 250ms ease,
+    background-color 200ms ease;
+}
+
+.mobile-nav-link:hover {
+  padding-left: 12px;
+  color: #a98558;
+  background: #faf8f3;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .marketplace-header,
+  .header-main > *,
+  .announcement-shimmer {
+    animation: none;
+  }
+
+  .header-nav-link::after {
+    transition: none;
+  }
+
+  .header-mobile-menu {
+    transition: none;
   }
 }

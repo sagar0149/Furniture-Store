@@ -1,3 +1,4 @@
+
 import Image from "next/image";
 import Link from "next/link";
 
@@ -16,14 +17,20 @@ import {
 } from "@/repositories/store-settings.repository";
 
 import {
+  getEligibleDiscountsForProducts,
+} from "@/repositories/discount.repository";
+
+import {
+  calculateProductDiscount,
+} from "@/lib/discounts";
+
+import {
   formatCurrency,
 } from "@/lib/currency";
 
+export const dynamic = "force-dynamic";
+
 export default async function ProductsPage() {
-  /*
-   * Get products, categories, store settings,
-   * and the currently configured currency.
-   */
   const [
     products,
     categories,
@@ -36,36 +43,31 @@ export default async function ProductsPage() {
     getStoreCurrency(),
   ]);
 
-  /*
-   * Use the store name configured by the admin.
-   * Fall back to "Furniture Store" only if
-   * settings have not been initialized.
-   */
   const storeName =
     settings?.storeName?.trim() ||
     "Furniture Store";
 
-  /*
-   * Get primary product images.
-   */
-  const productImages =
-    await Promise.all(
+  // Fetch product images and eligible discounts.
+  const [
+    productImages,
+    eligibleDiscountsByProduct,
+  ] = await Promise.all([
+    Promise.all(
       products.map(async (product) => {
         const image =
-          await getPrimaryProductImage(
-            product.id,
-          );
+          await getPrimaryProductImage(product.id);
 
         return {
           productId: product.id,
           image,
         };
       }),
-    );
+    ),
+    getEligibleDiscountsForProducts(
+      products.map((product) => product.id),
+    ),
+  ]);
 
-  /*
-   * Create a quick product -> image lookup.
-   */
   const imageMap = new Map(
     productImages.map((item) => [
       item.productId,
@@ -73,9 +75,6 @@ export default async function ProductsPage() {
     ]),
   );
 
-  /*
-   * Create a category -> category name lookup.
-   */
   const categoryMap = new Map(
     categories.map((category) => [
       category.id,
@@ -83,10 +82,23 @@ export default async function ProductsPage() {
     ]),
   );
 
+  // Calculate the best eligible discount for each product.
+  const productDiscounts = new Map(
+    products.map((product) => {
+      const eligibleDiscounts =
+        eligibleDiscountsByProduct.get(product.id) ?? [];
+
+      const pricing = calculateProductDiscount(
+        product,
+        eligibleDiscounts,
+      );
+
+      return [product.id, pricing] as const;
+    }),
+  );
+
   return (
     <main className="min-h-screen bg-background text-foreground">
-      {/* Header */}
-
       <header className="border-b">
         <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8">
           <Link
@@ -112,6 +124,13 @@ export default async function ProductsPage() {
             </Link>
 
             <Link
+              href="/cart"
+              className="text-muted-foreground hover:text-foreground"
+            >
+              Cart
+            </Link>
+
+            <Link
               href="/login"
               className="text-muted-foreground hover:text-foreground"
             >
@@ -120,8 +139,6 @@ export default async function ProductsPage() {
           </nav>
         </div>
       </header>
-
-      {/* Page Header */}
 
       <section className="border-b">
         <div className="mx-auto max-w-7xl px-4 py-12 sm:px-6 lg:px-8">
@@ -134,21 +151,16 @@ export default async function ProductsPage() {
           </h1>
 
           <p className="mt-3 max-w-2xl text-sm leading-6 text-muted-foreground sm:text-base">
-            Explore our collection of carefully
-            selected furniture for every room in
-            your home.
+            Explore our collection of carefully selected
+            furniture for every room in your home.
           </p>
 
           <p className="mt-4 text-sm text-muted-foreground">
             {products.length}{" "}
-            {products.length === 1
-              ? "product"
-              : "products"}
+            {products.length === 1 ? "product" : "products"}
           </p>
         </div>
       </section>
-
-      {/* Products */}
 
       <section className="mx-auto max-w-7xl px-4 py-12 sm:px-6 lg:px-8">
         {products.length === 0 ? (
@@ -158,52 +170,46 @@ export default async function ProductsPage() {
             </h2>
 
             <p className="mt-2 text-sm text-muted-foreground">
-              There are currently no active
-              products in the store.
+              There are currently no active products in the store.
             </p>
           </div>
         ) : (
           <div className="grid gap-x-5 gap-y-10 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
             {products.map((product) => {
-              const image =
-                imageMap.get(product.id);
+              const image = imageMap.get(product.id);
 
-              const categoryName =
-                categoryMap.get(
-                  product.categoryId,
-                );
-
-              /*
-               * Determine the current selling price.
-               */
-              const currentPrice = Number(
-                product.salePrice ??
-                  product.regularPrice,
+              const categoryName = categoryMap.get(
+                product.categoryId,
               );
 
-              /*
-               * Regular/original price.
-               */
-              const regularPrice = Number(
-                product.regularPrice,
-              );
+              const pricing = productDiscounts.get(
+                product.id,
+              )!;
 
-              /*
-               * Product has a sale price.
-               */
-              const hasSale =
-                product.salePrice !== null;
+              const hasProductSale =
+                product.salePrice !== null &&
+                Number(product.salePrice) <
+                  Number(product.regularPrice);
 
-              /*
-               * Low-stock state.
-               */
+              const hasPromotion =
+                pricing.discountAmount > 0;
+
+              const hasAnyDiscount =
+                hasProductSale || hasPromotion;
+
+              const discountPercentage =
+                pricing.basePrice > 0 && hasPromotion
+                  ? Math.round(
+                      (pricing.discountAmount /
+                        pricing.basePrice) *
+                        100,
+                    )
+                  : 0;
+
               const isLowStock =
                 product.stockQuantity <=
                 product.lowStockThreshold;
 
-              /*
-               * Out-of-stock state.
-               */
               const isOutOfStock =
                 product.stockQuantity <= 0;
 
@@ -216,15 +222,12 @@ export default async function ProductsPage() {
                     href={`/products/${product.slug}`}
                     className="block"
                   >
-                    {/* Product Image */}
-
                     <div className="relative aspect-square overflow-hidden rounded-xl border bg-muted">
                       {image ? (
                         <Image
                           src={image.url}
                           alt={
-                            image.altText ??
-                            product.name
+                            image.altText ?? product.name
                           }
                           fill
                           sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, (max-width: 1280px) 33vw, 25vw"
@@ -236,15 +239,13 @@ export default async function ProductsPage() {
                         </div>
                       )}
 
-                      {/* Sale Badge */}
-
-                      {hasSale && (
-                        <span className="absolute left-3 top-3 rounded-full bg-foreground px-3 py-1 text-xs font-medium text-background">
-                          Sale
+                      {hasAnyDiscount && (
+                        <span className="absolute left-3 top-3 rounded-full bg-rose-600 px-3 py-1 text-xs font-bold text-white">
+                          {hasPromotion
+                            ? `${discountPercentage}% OFF`
+                            : "Sale"}
                         </span>
                       )}
-
-                      {/* Out of Stock Badge */}
 
                       {isOutOfStock && (
                         <span className="absolute right-3 top-3 rounded-full border bg-background px-3 py-1 text-xs font-medium">
@@ -253,26 +254,16 @@ export default async function ProductsPage() {
                       )}
                     </div>
 
-                    {/* Product Information */}
-
                     <div className="mt-4">
-                      {/* Category */}
-
                       {categoryName && (
                         <p className="text-xs uppercase tracking-wide text-muted-foreground">
                           {categoryName}
                         </p>
                       )}
 
-                      {/* Product Name */}
-
-                      <div className="mt-1 flex items-start justify-between gap-3">
-                        <h2 className="font-medium leading-6">
-                          {product.name}
-                        </h2>
-                      </div>
-
-                      {/* Brand */}
+                      <h2 className="mt-1 font-medium leading-6">
+                        {product.name}
+                      </h2>
 
                       {product.brand && (
                         <p className="mt-1 text-sm text-muted-foreground">
@@ -280,42 +271,41 @@ export default async function ProductsPage() {
                         </p>
                       )}
 
-                      {/* Price */}
-
-                      <div className="mt-3 flex items-center gap-2">
+                      <div className="mt-3 flex flex-wrap items-center gap-2">
                         <span className="font-semibold">
                           {formatCurrency(
-                            currentPrice,
+                            pricing.finalPrice,
                             currency,
                           )}
                         </span>
 
-                        {/* Original Price */}
-
-                        {hasSale && (
+                        {hasAnyDiscount && (
                           <span className="text-sm text-muted-foreground line-through">
                             {formatCurrency(
-                              regularPrice,
+                              pricing.originalPrice,
                               currency,
                             )}
                           </span>
                         )}
                       </div>
 
-                      {/* Low Stock */}
+                      {hasPromotion && (
+                        <p className="mt-2 text-xs font-semibold text-rose-600">
+                          {pricing.discountName}
+                          {" — Save "}
+                          {formatCurrency(
+                            pricing.discountAmount,
+                            currency,
+                          )}
+                          {" per item"}
+                        </p>
+                      )}
 
-                      {!isOutOfStock &&
-                        isLowStock && (
-                          <p className="mt-2 text-xs font-medium text-destructive">
-                            Only{" "}
-                            {
-                              product.stockQuantity
-                            }{" "}
-                            left
-                          </p>
-                        )}
-
-                      {/* Out of Stock */}
+                      {!isOutOfStock && isLowStock && (
+                        <p className="mt-2 text-xs font-medium text-destructive">
+                          Only {product.stockQuantity} left
+                        </p>
+                      )}
 
                       {isOutOfStock && (
                         <p className="mt-2 text-xs font-medium text-muted-foreground">
@@ -331,13 +321,11 @@ export default async function ProductsPage() {
         )}
       </section>
 
-      {/* Footer */}
-
       <footer className="border-t">
         <div className="mx-auto flex max-w-7xl flex-col gap-3 px-4 py-8 text-sm text-muted-foreground sm:px-6 md:flex-row md:items-center md:justify-between lg:px-8">
           <p>
-            © {new Date().getFullYear()}{" "}
-            {storeName}. All rights reserved.
+            © {new Date().getFullYear()} {storeName}.
+            All rights reserved.
           </p>
 
           <Link

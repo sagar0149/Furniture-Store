@@ -1,104 +1,120 @@
+
 "use client";
 
-import { useState } from "react";
+import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-
 import { addToCartAction } from "@/actions/cart/add";
+import { updateCartQuantityAction } from "@/actions/cart/update";
 
-type AddToCartButtonProps = {
+type Props = {
   productId: string;
   stockQuantity: number;
+  initialQuantity?: number;
 };
 
 export function AddToCartButton({
   productId,
   stockQuantity,
-}: AddToCartButtonProps) {
+  initialQuantity = 0,
+}: Props) {
   const router = useRouter();
+  const [quantity, setQuantity] = useState(initialQuantity);
+  const [isPending, startTransition] = useTransition();
+  const [message, setMessage] = useState("");
 
-  const [isLoading, setIsLoading] =
-    useState(false);
+  function updateQuantity(next: number) {
+    if (isPending || next < 1 || next > stockQuantity) return;
 
-  const [message, setMessage] =
-    useState("");
-
-  const [error, setError] =
-    useState("");
-
-  async function handleAddToCart() {
     setMessage("");
-    setError("");
 
-    if (stockQuantity <= 0) {
-      setError(
-        "This product is currently out of stock.",
-      );
-      return;
-    }
+    startTransition(async () => {
+      try {
+        const result =
+          quantity === 0
+            ? await addToCartAction(productId, next)
+            : await updateCartQuantityAction(productId, next);
 
-    setIsLoading(true);
+        if (!result.success) {
+          setMessage(result.message);
+          return;
+        }
 
-    try {
-      const result =
-        await addToCartAction(productId, 1);
+        setQuantity(result.quantity ?? next);
+        setMessage("Cart updated");
+        router.refresh();
 
-      if (!result.success) {
-        setError(result.message);
-        return;
+        window.setTimeout(() => setMessage(""), 1800);
+      } catch {
+        setMessage("Please try again");
       }
+    });
+  }
 
-      setMessage(result.message);
-
-      router.refresh();
-    } catch (error) {
-      console.error(
-        "Add to cart error:",
-        error,
-      );
-
-      setError(
-        "Unable to add product to cart. Please try again.",
-      );
-    } finally {
-      setIsLoading(false);
-    }
+  if (stockQuantity <= 0) {
+    return (
+      <button
+        disabled
+        className="rounded-lg bg-gray-100 px-4 py-2.5 text-sm text-gray-500"
+      >
+        Out of stock
+      </button>
+    );
   }
 
   return (
-    <div className="space-y-3">
-      <button
-        type="button"
-        onClick={handleAddToCart}
-        disabled={
-          isLoading ||
-          stockQuantity <= 0
-        }
-        className="inline-flex h-12 w-full items-center justify-center rounded-md bg-foreground px-6 text-sm font-medium text-background transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
+    <div className="flex flex-col items-start gap-1.5">
+      {quantity === 0 ? (
+        <button
+          onClick={() => updateQuantity(1)}
+          disabled={isPending}
+          className="rounded-lg bg-[#453326] px-5 py-2.5 text-sm font-medium text-white transition-all duration-300 hover:bg-[#604833] active:scale-95 disabled:opacity-50"
+        >
+          {isPending ? "Adding..." : "Add to Cart"}
+        </button>
+      ) : (
+        <div className="inline-flex w-fit items-center gap-1 rounded-lg border border-[#e6ded2] bg-white p-1 shadow-sm transition-all duration-300 hover:border-[#cbb28e]">
+          <button
+            onClick={() => updateQuantity(quantity - 1)}
+            disabled={isPending || quantity <= 1}
+            aria-label="Decrease quantity"
+            className="flex h-8 w-8 items-center justify-center rounded-md text-[#453326] transition-all duration-200 hover:bg-[#eee8de] active:scale-90 disabled:cursor-not-allowed disabled:opacity-30"
+          >
+            −
+          </button>
+
+          <span
+            key={quantity}
+            aria-live="polite"
+            className="min-w-8 animate-[quantity-pop_220ms_ease-out] text-center text-sm font-medium tabular-nums"
+          >
+            {isPending ? "…" : quantity}
+          </span>
+
+          <button
+            onClick={() => updateQuantity(quantity + 1)}
+            disabled={isPending || quantity >= stockQuantity}
+            aria-label="Increase quantity"
+            className="flex h-8 w-8 items-center justify-center rounded-md text-[#453326] transition-all duration-200 hover:bg-[#eee8de] active:scale-90 disabled:cursor-not-allowed disabled:opacity-30"
+          >
+            +
+          </button>
+        </div>
+      )}
+
+      <p
+        aria-live="polite"
+        className={`text-xs transition-all duration-300 ${
+          message
+            ? "translate-y-0 opacity-100"
+            : "-translate-y-1 opacity-0"
+        } ${
+          message === "Cart updated"
+            ? "text-emerald-600"
+            : "text-red-500"
+        }`}
       >
-        {isLoading
-          ? "Adding..."
-          : stockQuantity <= 0
-            ? "Out of Stock"
-            : "Add to Cart"}
-      </button>
-
-      {error && (
-        <p
-          role="alert"
-          className="text-sm text-destructive"
-        >
-          {error}
-        </p>
-      )}
-
-      {message && (
-        <p
-          role="status"
-          className="text-sm text-green-600"
-        >
-          {message}
-        </p>
-      )}
+        {message || "\u00A0"}
+      </p>
     </div>
   );
 }
