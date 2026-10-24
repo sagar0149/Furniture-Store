@@ -12,7 +12,11 @@ import {
   getPrimaryProductImage,
 } from "@/repositories/product.repository";
 import { getStoreSettings } from "@/repositories/store-settings.repository";
+import { getEligibleDiscountsForProducts } from "@/repositories/discount.repository";
+import { calculateProductDiscount } from "@/lib/discounts";
 import { formatCurrency } from "@/lib/currency";
+
+export const dynamic = "force-dynamic";
 
 export default async function HomePage() {
   const [categories, products, featuredProducts, settings] =
@@ -30,6 +34,33 @@ export default async function HomePage() {
     "Furniture to make every room feel like home.";
   const footerDescription =
     settings?.footerDescription?.trim() || storeDescription;
+
+  // Include every product that can appear in a homepage product section.
+  const allStoreProducts = [
+    ...new Map(
+      [...products, ...featuredProducts].map((product) => [
+        product.id,
+        product,
+      ]),
+    ).values(),
+  ];
+
+  // Load currently eligible promotions for these products.
+  const eligibleDiscountsByProduct =
+    await getEligibleDiscountsForProducts(
+      allStoreProducts.map((product) => product.id),
+    );
+
+  // Calculate each product's best eligible discount.
+  const productDiscounts = new Map(
+    allStoreProducts.map((product) => [
+      product.id,
+      calculateProductDiscount(
+        product,
+        eligibleDiscountsByProduct.get(product.id) ?? [],
+      ),
+    ]),
+  );
 
   const allImages = await Promise.all(
     products.map(async (product) => ({
@@ -71,13 +102,18 @@ export default async function HomePage() {
       };
     });
 
-  const saleProducts = products.filter(
-    (product) =>
+  // Include manually discounted products and products with active promotions.
+  const saleProducts = products.filter((product) => {
+    const pricing = productDiscounts.get(product.id)!;
+
+    const hasManualSale =
       product.salePrice !== null &&
       product.salePrice !== undefined &&
       Number(product.salePrice) > 0 &&
-      Number(product.salePrice) < Number(product.regularPrice),
-  );
+      Number(product.salePrice) < Number(product.regularPrice);
+
+    return hasManualSale || pricing.discountAmount > 0;
+  });
 
   const newArrivals = [...products]
     .sort(
@@ -90,16 +126,40 @@ export default async function HomePage() {
   function ProductCard({
     product,
   }: {
-    product: (typeof products)[number];
+    product: (typeof allStoreProducts)[number];
   }) {
     const image = imageMap.get(product.id);
+    const pricing = productDiscounts.get(product.id)!;
+
     const regularPrice = Number(product.regularPrice);
-    const price = Number(product.salePrice ?? product.regularPrice);
-    const hasSale = price < regularPrice;
-    const discount =
-      hasSale && regularPrice > 0
-        ? Math.round(((regularPrice - price) / regularPrice) * 100)
+    const price = pricing.finalPrice;
+    const comparePrice = pricing.basePrice;
+
+    const hasPromotion = pricing.discountAmount > 0;
+
+    const hasManualSale =
+      product.salePrice !== null &&
+      product.salePrice !== undefined &&
+      Number(product.salePrice) > 0 &&
+      Number(product.salePrice) < regularPrice;
+
+    const hasSale = hasPromotion || hasManualSale;
+
+    const discount = hasPromotion && comparePrice > 0
+      ? Math.round(
+          (pricing.discountAmount / comparePrice) * 100,
+        )
+      : hasManualSale && regularPrice > 0
+        ? Math.round(
+            ((regularPrice - Number(product.salePrice)) /
+              regularPrice) *
+              100,
+          )
         : 0;
+
+    const crossedOutPrice = hasPromotion
+      ? comparePrice
+      : regularPrice;
 
     return (
       <article className="group min-w-0 overflow-hidden rounded-lg border border-gray-200 bg-white transition duration-300 hover:-translate-y-1 hover:shadow-lg">
@@ -125,7 +185,13 @@ export default async function HomePage() {
 
             {hasSale && (
               <span className="absolute left-2 top-2 rounded bg-[#b83227] px-2 py-1 text-[10px] font-bold text-white sm:text-xs">
-                {discount}% OFF
+                {discount > 0 ? `${discount}% OFF` : "SPECIAL PRICE"}
+              </span>
+            )}
+
+            {hasPromotion && pricing.discountName && (
+              <span className="absolute bottom-2 right-2 max-w-[85%] truncate rounded bg-white/95 px-2 py-1 text-[10px] font-semibold text-[#453326] shadow-sm sm:text-xs">
+                {pricing.discountName}
               </span>
             )}
 
@@ -158,10 +224,18 @@ export default async function HomePage() {
 
             {hasSale && (
               <span className="text-xs text-gray-500 line-through">
-                {formatCurrency(regularPrice, currency)}
+                {formatCurrency(crossedOutPrice, currency)}
               </span>
             )}
           </div>
+
+          {hasPromotion && (
+            <p className="mt-1 truncate text-xs font-medium text-[#806747]">
+              {pricing.discountName
+                ? `Offer: ${pricing.discountName}`
+                : `Save ${formatCurrency(pricing.discountAmount, currency)}`}
+            </p>
+          )}
 
           <Link
             href={`/products/${product.slug}`}
@@ -182,7 +256,7 @@ export default async function HomePage() {
   }: {
     title: string;
     subtitle: string;
-    items: (typeof products)[number][];
+    items: (typeof allStoreProducts)[number][];
     href?: string;
   }) {
     return (

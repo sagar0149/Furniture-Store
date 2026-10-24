@@ -1,9 +1,10 @@
+
 "use client";
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 
-import { updateCartQuantityAction } from "@/actions/cart/update";
+import { updateCartItemAction } from "@/actions/cart/update";
 import { removeCartItemAction } from "@/actions/cart/remove";
 
 type CartItemControlsProps = {
@@ -19,36 +20,26 @@ export function CartItemControls({
 }: CartItemControlsProps) {
   const router = useRouter();
 
-  const [isLoading, setIsLoading] =
-    useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState("");
 
-  const [error, setError] =
-    useState("");
-
-  async function updateQuantity(
-    newQuantity: number,
-  ) {
+  async function updateQuantity(newQuantity: number) {
     setError("");
 
-    if (newQuantity < 1) {
-      return;
-    }
+    if (newQuantity < 1) return;
 
     if (newQuantity > stockQuantity) {
-      setError(
-        `Only ${stockQuantity} available.`,
-      );
+      setError(`Only ${stockQuantity} available.`);
       return;
     }
 
     setIsLoading(true);
 
     try {
-      const result =
-        await updateCartQuantityAction(
-          cartItemId,
-          newQuantity,
-        );
+      const result = await updateCartItemAction(
+        cartItemId,
+        newQuantity,
+      );
 
       if (!result.success) {
         setError(result.message);
@@ -57,26 +48,15 @@ export function CartItemControls({
 
       router.refresh();
     } catch (error) {
-      console.error(
-        "Update cart quantity error:",
-        error,
-      );
-
-      setError(
-        "Unable to update quantity.",
-      );
+      console.error("Update cart quantity error:", error);
+      setError("Unable to update quantity.");
     } finally {
       setIsLoading(false);
     }
   }
 
   async function handleRemove() {
-    const confirmed =
-      window.confirm(
-        "Remove this product from your cart?",
-      );
-
-    if (!confirmed) {
+    if (!window.confirm("Remove this product from your cart?")) {
       return;
     }
 
@@ -84,10 +64,7 @@ export function CartItemControls({
     setIsLoading(true);
 
     try {
-      const result =
-        await removeCartItemAction(
-          cartItemId,
-        );
+      const result = await removeCartItemAction(cartItemId);
 
       if (!result.success) {
         setError(result.message);
@@ -96,14 +73,8 @@ export function CartItemControls({
 
       router.refresh();
     } catch (error) {
-      console.error(
-        "Remove cart item error:",
-        error,
-      );
-
-      setError(
-        "Unable to remove product.",
-      );
+      console.error("Remove cart item error:", error);
+      setError("Unable to remove product.");
     } finally {
       setIsLoading(false);
     }
@@ -111,65 +82,52 @@ export function CartItemControls({
 
   return (
     <div className="mt-4 space-y-2">
-      <div className="flex items-center gap-2">
-        <button
-          type="button"
-          onClick={() =>
-            updateQuantity(quantity - 1)
-          }
-          disabled={
-            isLoading ||
-            quantity <= 1
-          }
-          aria-label="Decrease quantity"
-          className="flex h-9 w-9 items-center justify-center rounded-md border text-sm font-medium hover:bg-muted disabled:cursor-not-allowed disabled:opacity-40"
-        >
-          −
-        </button>
+      <div className="flex flex-wrap items-center gap-2">
+        <div className="inline-flex items-center rounded-lg border border-[#e6ded2] bg-white p-1">
+          <button
+            type="button"
+            onClick={() => updateQuantity(quantity - 1)}
+            disabled={isLoading || quantity <= 1}
+            aria-label="Decrease quantity"
+            className="flex h-8 w-8 items-center justify-center rounded-md text-[#453326] transition-all duration-200 hover:bg-[#eee8de] active:scale-90 disabled:cursor-not-allowed disabled:opacity-30"
+          >
+            −
+          </button>
 
-        <span
-          aria-label={`Quantity ${quantity}`}
-          className="flex h-9 min-w-10 items-center justify-center rounded-md border px-3 text-sm font-medium"
-        >
-          {quantity}
-        </span>
+          <span
+            aria-label={`Quantity ${quantity}`}
+            aria-live="polite"
+            className="min-w-8 px-1 text-center text-sm font-medium tabular-nums"
+          >
+            {isLoading ? "…" : quantity}
+          </span>
 
-        <button
-          type="button"
-          onClick={() =>
-            updateQuantity(quantity + 1)
-          }
-          disabled={
-            isLoading ||
-            quantity >= stockQuantity
-          }
-          aria-label="Increase quantity"
-          className="flex h-9 w-9 items-center justify-center rounded-md border text-sm font-medium hover:bg-muted disabled:cursor-not-allowed disabled:opacity-40"
-        >
-          +
-        </button>
+          <button
+            type="button"
+            onClick={() => updateQuantity(quantity + 1)}
+            disabled={isLoading || quantity >= stockQuantity}
+            aria-label="Increase quantity"
+            className="flex h-8 w-8 items-center justify-center rounded-md text-[#453326] transition-all duration-200 hover:bg-[#eee8de] active:scale-90 disabled:cursor-not-allowed disabled:opacity-30"
+          >
+            +
+          </button>
+        </div>
 
         <button
           type="button"
           onClick={handleRemove}
           disabled={isLoading}
-          className="ml-2 h-9 rounded-md border border-destructive/30 px-3 text-xs font-medium text-destructive hover:bg-destructive/10 disabled:cursor-not-allowed disabled:opacity-40"
+          className="rounded-lg border border-red-200 px-3 py-2 text-xs font-medium text-red-600 transition-all duration-200 hover:border-red-300 hover:bg-red-50 active:scale-95 disabled:cursor-not-allowed disabled:opacity-40"
         >
-          {isLoading
-            ? "Processing..."
-            : "Remove"}
+          {isLoading ? "Processing..." : "Remove"}
         </button>
       </div>
 
       {error && (
-        <p
-          role="alert"
-          className="text-xs text-destructive"
-        >
+        <p role="alert" className="text-xs text-red-600">
           {error}
         </p>
       )}
     </div>
   );
 }
-
